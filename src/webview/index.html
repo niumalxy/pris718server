@@ -6,32 +6,124 @@
         <title>Backend Demo</title>
     </head>
     <body>
-        <h1>后端交互演示</h1>
-        <button id="callBackendBtn">调用后端</button>
-        <div id="result" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc;"></div>
+        <h1>PRIS-718服务器</h1>
+        <button id="callBackendBtn">查询</button>
+        <div id="result" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc;">
+            <div class="no-data">点击查询按钮获取服务器数据</div>
+        </div>
+        <!-- 表格容器 -->
+        <div id="table-container" style="display: none;"></div>
 
         <script>
             // 与插件通信的API
             const vscode = acquireVsCodeApi();
-            
             // 获取DOM元素
             const btn = document.getElementById('callBackendBtn');
             const resultDiv = document.getElementById('result');
-            
             // 按钮点击事件
             btn?.addEventListener('click', () => {
-                resultDiv.textContent = '正在调用后端...';
+                // 状态更新：加载中
+                btn.disabled = true;
+                resultDiv.innerHTML = '<div class="loading">正在查询服务器数据...</div>';
                 // 发送消息给插件（后端）
                 vscode.postMessage({
-                    command: 'callBackend'
+                    command: 'getGpuList'
                 });
             });
-            
             // 接收来自插件的消息
             window.addEventListener('message', event => {
                 const message = event.data;
-                resultDiv.textContent = message;
+                renderGpuTable(message);
+                btn.disabled = false;
             });
+
+            // 处理原始数据：扁平化结构（关联服务器IP和GPU信息）
+            function formatGpuData(rawData) {
+                const formattedData = [];
+                
+                // 遍历原始数据数组（每个元素是一个服务器对象）
+                rawData.forEach(serverObj => {
+                    // 获取服务器IP（对象的唯一键）
+                    const serverIp = Object.keys(serverObj)[0];
+                    // 获取该服务器的所有GPU
+                    const gpuList = serverObj[serverIp];
+                    
+                    // 给每个GPU添加服务器IP字段，并计算内存使用率
+                    gpuList.forEach(gpu => {
+                        const usagePercent = ((gpu.usage / gpu.total) * 100).toFixed(1); // 保留1位小数
+                        formattedData.push({
+                            serverIp: serverIp, // 服务器IP
+                            gpuType: gpu.gpu_type, // GPU型号
+                            totalMemory: gpu.total, // 总内存(MB)
+                            usedMemory: gpu.usage, // 已用内存(MB)
+                            usagePercent: usagePercent // 内存使用率(%)
+                        });
+                    });
+                });
+                return formattedData;
+            }
+
+            // 渲染表格
+            function renderGpuTable(result) {
+                const statusEl = document.getElementById("result");
+                const tableContainer = document.getElementById("table-container");
+
+                try {
+                    // 处理原始数据
+                    const formattedData = formatGpuData(result);
+                    if (formattedData.length === 0) {
+                        statusEl.textContent = "暂无GPU资源数据";
+                        statusEl.className = "status";
+                        return;
+                    }
+
+                    // 隐藏状态提示，显示表格
+                    statusEl.style.display = "none";
+                    tableContainer.style.display = "block";
+
+                    // 生成表格HTML
+                    const tableHtml = `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>服务器IP</th>
+                                    <th>GPU型号</th>
+                                    <th>总内存(MB)</th>
+                                    <th>已用内存(MB)</th>
+                                    <th>内存使用率(%)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${formattedData.map(gpu => {
+                                    // 根据使用率添加不同颜色类
+                                    let usageClass = "usage-low";
+                                    if (gpu.usagePercent >= 80) {
+                                        usageClass = "usage-high";
+                                    } else if (gpu.usagePercent >= 50) {
+                                        usageClass = "usage-middle";
+                                    }
+
+                                    return `
+                                        <tr>
+                                            <td>${gpu.serverIp}</td>
+                                            <td>${gpu.gpuType}</td>
+                                            <td>${gpu.totalMemory}</td>
+                                            <td>${gpu.usedMemory}</td>
+                                            <td class="${usageClass}">${gpu.usagePercent}%</td>
+                                        </tr>
+                                    `;
+                                }).join("")}
+                            </tbody>
+                        </table>
+                    `;
+
+                    tableContainer.innerHTML = tableHtml;
+
+                } catch (err) {
+                    statusEl.textContent = `表格渲染失败：${err.message}`;
+                    statusEl.className = "status error";
+                }
+            }
         </script>
     </body>
     </html>

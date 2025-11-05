@@ -1,4 +1,9 @@
-from flask import Flask, jsonify
+import sys, os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from flask import Flask, jsonify, request
+from model.request_model import *
+from service import gpu_service
+from db.local import getMachineList
 
 app = Flask(__name__)
 
@@ -6,16 +11,26 @@ app = Flask(__name__)
 def check():
     return jsonify({'code': 500,'message': 'success'})
 
-#注册新机器
-@app.route('/api/register', method=["POST"])
-def register():
-    pass
+#加入新机器
+@app.route('/api/add_host', methods=["POST"])
+def addHost():
+    json_data = request.get_json()
+    if not json_data:
+        return jsonify({"message": "请求数据不是有效的 JSON"}), 400
+    try:
+        req = addHostReq.parse_obj(json_data)
+    except Exception as e:
+        return jsonify({"message": e + "请提供完整信息。"})
+    # TODO，加入mysql
+    # result = addHostService
+    return jsonify({"message": "已完成"})
 
-@app.route('/api/gpu_usage', method=["GET"])
-def getGpuUsage():
-    pass
+@app.route('/api/list_gpu_usage')
+def getGpuUsageList():
+    machineList = getMachineList()
+    return jsonify(gpu_service.getGpuUsageList(machineList))
 
-@app.route('/api/best_device', method=["POST"])
+@app.route('/api/best_device', methods=["POST"])
 def getBestDevice():
     pass
 

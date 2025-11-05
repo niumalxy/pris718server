@@ -1,0 +1,1 @@
+GPU_INFO_COMMAND = "nvidia-smi --query-gpu=name,memory.used,memory.total --format=csv,noheader,nounits"

@@ -22,8 +22,8 @@ export function activate(context: vscode.ExtensionContext) {
 // This method is called when your extension is deactivated
 export function deactivate() {}
 
-async function callBackendService(): Promise<string> {
-    const apiUrl = "http://0.0.0.0:5000/check";
+async function getGpuList(): Promise<Object> {
+    const apiUrl = "http://127.0.0.1:5000/api/list_gpu_usage";
 
 	try {
         // 发起GET请求
@@ -37,7 +37,7 @@ async function callBackendService(): Promise<string> {
         // 解析响应数据（根据后端返回格式调整，这里以JSON为例）
         const data = await response.json();
         // 处理数据并返回（根据实际需求调整）
-        return `后端返回数据: ${JSON.stringify(data, null, 2)}`;
+        return JSON.parse(JSON.stringify(data));
     } catch (error) {
         // 捕获错误（如网络问题、解析失败等）
         return `请求出错: ${error instanceof Error ? error.message : String(error)}`;
@@ -68,8 +68,8 @@ function registerCommand(context: vscode.ExtensionContext ){
 		// 监听webview消息
 		panel.webview.onDidReceiveMessage(
 			async(message) => {
-				if (message.command === 'callBackend') {
-					const result = await callBackendService();
+				if (message.command === 'getGpuList') {
+					const result = await getGpuList();
 					panel.webview.postMessage(result);
 				}
 			},
@@ -115,9 +115,10 @@ class SidebarWebviewProvider implements vscode.WebviewViewProvider {
         // 监听 Webview 发送的消息
         webviewView.webview.onDidReceiveMessage(
             async (message) => {
-                if (message.command === 'callBackend') {
+                console.log(message.command);
+                if (message.command === 'getGpuList') {
                     // 发起 GET 请求
-                    const result = await callBackendService();
+                    const result = await getGpuList();
                     // 发送结果回 Webview
                     this._webviewView?.webview.postMessage(result);
                 }
