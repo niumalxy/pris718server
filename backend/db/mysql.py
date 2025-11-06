@@ -10,7 +10,7 @@ class mysql:
             self.conn = pymysql.connect(**config)
         except OperationalError as e:
             # 连接错误（如地址、端口、密码错误）
-            log.error("数据库连接失败！")
+            logger.error("数据库连接失败！")
             self.conn = None
         
     def queryHostListByLab(self, lab: str):
