@@ -22,6 +22,10 @@ export function activate(context: vscode.ExtensionContext) {
 // This method is called when your extension is deactivated
 export function deactivate() {}
 
+const DFT_URL = "";
+const SCHOOL_URL = "";
+
+
 async function getGpuList(): Promise<Object> {
     const apiUrl = "http://127.0.0.1:5000/api/list_gpu_usage";
 
@@ -44,7 +48,7 @@ async function getGpuList(): Promise<Object> {
     }
 }
 
-function registerCommand(context: vscode.ExtensionContext ){
+function registerCommand(context: vscode.ExtensionContext) {
 	return vscode.commands.registerCommand('pris.pris718', () => {
 		const panel = vscode.window.createWebviewPanel(
             'index',

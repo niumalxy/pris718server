@@ -2,7 +2,7 @@ import time
 
 class expirableDict:
     """
-    基于Dict和lazy expire实现的可过期dict
+    基于Dict和lazy clean实现的可过期dict
     """
     def __init__(self):
         self.dict = {}
@@ -36,7 +36,7 @@ class expirableDict:
             create_timestamp = data["create_timestamp"] if expire == 0 else time.time()
             self.dict[key] = self.convert_data(value, expire_timestamp, create_timestamp)
         else:
-            #不设置expire，则永不过期
+            # 不设置expire，则永不过期
             expire_timestamp = 1640995200 if expire == 0 else expire 
             create_timestamp = time.time()
             self.dict[key] = self.convert_data(value, expire_timestamp, create_timestamp)
