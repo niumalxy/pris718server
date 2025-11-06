@@ -38,7 +38,7 @@ def getGpuUsageList(lab: str):
 
 @app.route('/api/gpu_usage_by_list', methods=["POST"])
 def getGpuUsageListByHostList():
-    machineList = request.json()
+    machineList = request.json
     return jsonify(gpu_service.getGpuUsageList(machineList))
 
 @app.route('/api/best_device', methods=["POST"])
