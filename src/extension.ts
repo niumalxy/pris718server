@@ -25,7 +25,7 @@ export function deactivate() {}
 const DFT_URL = "";
 const SCHOOL_LIST_GPU_USAGE_URL = "http://10.160.4.55:5000/api/list_gpu_usage/school";
 const GET_HOST_LIST_URL = "http://10.160.4.55:5000/api/host_list/dft"
-const DFT_LIST_GPU_USAGE_URL = "http://10.10.90.246:5000/api/gpu_usage_by_list"
+const DFT_LIST_GPU_USAGE_URL = "http://10.10.90.248:5000/api/gpu_usage_by_list"
 
 async function getGpuList(): Promise<Object> {
     // 获取school的数据
