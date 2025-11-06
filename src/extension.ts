@@ -22,7 +22,7 @@ export function activate(context: vscode.ExtensionContext) {
 // This method is called when your extension is deactivated
 export function deactivate() {}
 
-const DFT_URL = "";
+const DFT_CHECK_URL = "http://10.10.90.248:5000/check";
 const SCHOOL_LIST_GPU_USAGE_URL = "http://10.160.4.55:5000/api/list_gpu_usage/school";
 const GET_HOST_LIST_URL = "http://10.160.4.55:5000/api/host_list/dft"
 const DFT_LIST_GPU_USAGE_URL = "http://10.10.90.248:5000/api/gpu_usage_by_list"
@@ -46,8 +46,22 @@ async function getGpuList(): Promise<Object> {
     } catch (error) {
         console.error("校园网服务器访问失败！");
     }
+    
+    // 获取dft的数据，先访问check接口判断是否能连上服务器
+    try{
+        var response = await fetchWithTimeout(DFT_CHECK_URL, {
+        method: "GET"
+        }, 2000);
+        if (response instanceof Response && !response.ok) {
+            console.error("东方通服务器访问失败！");
+            return school_json;
+        }
+    } catch (error) {
+        console.error("东方通服务器访问失败！");
+        return school_json;
+    }
+    
 
-    //获取dft的数据
     var dft_json = []
     const controller = new AbortController()
     try {

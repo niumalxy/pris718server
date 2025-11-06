@@ -1,8 +1,10 @@
 {
-  "name": "pris",
-  "displayName": "pris",
+  "name": "pris718server",
+  "displayName": "pris718server",
   "description": "pris GPU search server",
-  "version": "0.0.1",
+  "author": "lxy",
+  "publisher": "pris718server",
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -47,7 +49,7 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.105.0",
+    "@types/vscode": "^1.85.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
     "@typescript-eslint/eslint-plugin": "^8.45.0",
