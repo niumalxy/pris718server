@@ -3,12 +3,15 @@ from utils.ssh import ssh
 import re
 from logger.logger import logger
 from model import command
+from db.mysql import mysql
 
 # 全局变量，用于防止连接过多导致服务器崩溃
 statusCache = expirableDict()
 
 # TODO: 提升响应速度，线程池多任务访问服务器
 
+def getHostList(lab: str):
+    return mysql.queryHostListByLab(lab)
 
 def parseGpuUsageInfo(info: str) -> dict:
     lines = info.split("\n")
@@ -24,7 +27,11 @@ def parseGpuUsageInfo(info: str) -> dict:
             "total": int(items[2].strip())
         })
     return gpu_infos
-    
+
+LAB2LABNAME = {
+    'dft': "东方通",
+    'school': "校园网"
+}
 def getGpuUsageList(machineList: list):
     status = []
     for machine in machineList:
@@ -38,9 +45,11 @@ def getGpuUsageList(machineList: list):
             cmdResult = conn.run_command(command=command.GPU_INFO_COMMAND)
             conn.close()
             gpu_infos = parseGpuUsageInfo(cmdResult)
-            status.append({machine["host"]: gpu_infos})
+            #带上机房名称
+            host_name = LAB2LABNAME[machine['lab']] + ":" + machine["host"]
+            status.append({host_name: gpu_infos})
             # 缓存，10s过期
-            statusCache.set(machine["host"], gpu_infos, expire=10)
+            statusCache.set(host_name, gpu_infos, expire=10)
         except Exception as e:
             logger.error(f"Machine {machine} goes wrong, msg: ", e)
             continue

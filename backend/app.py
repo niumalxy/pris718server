@@ -27,12 +27,18 @@ def addHost():
 
 @app.route('/api/host_list/<lab>')
 def getHostList(lab: str):
-    return jsonify(getHostList(lab))
+    hostList = gpu_service.getHostList(lab)
+    return jsonify(hostList)
     
 @app.route('/api/list_gpu_usage/<lab>')
 def getGpuUsageList(lab: str):
     #machineList = getMachineList()
     machineList = mysql.queryHostListByLab(lab)
+    return jsonify(gpu_service.getGpuUsageList(machineList))
+
+@app.route('/api/gpu_usage_by_list', methods=["POST"])
+def getGpuUsageListByHostList():
+    machineList = request.json()
     return jsonify(gpu_service.getGpuUsageList(machineList))
 
 @app.route('/api/best_device', methods=["POST"])

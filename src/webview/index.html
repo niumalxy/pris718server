@@ -5,6 +5,45 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Backend Demo</title>
     </head>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        th {
+            background-color: transparent;
+            font-weight: bold;
+        }
+        
+        tr {
+            background-color: transparent;
+            color: white;
+        }
+
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .usage-low {
+            color: green;
+        }
+        
+        .usage-middle {
+            color: orange;
+        }
+        
+        .usage-high {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
     <body>
         <h1>PRIS-718服务器</h1>
         <button id="callBackendBtn">查询</button>
@@ -41,25 +80,27 @@
             function formatGpuData(rawData) {
                 const formattedData = [];
                 
-                // 遍历原始数据数组（每个元素是一个服务器对象）
                 rawData.forEach(serverObj => {
-                    // 获取服务器IP（对象的唯一键）
                     const serverIp = Object.keys(serverObj)[0];
-                    // 获取该服务器的所有GPU
                     const gpuList = serverObj[serverIp];
                     
-                    // 给每个GPU添加服务器IP字段，并计算内存使用率
-                    gpuList.forEach(gpu => {
-                        const usagePercent = ((gpu.usage / gpu.total) * 100).toFixed(1); // 保留1位小数
-                        formattedData.push({
-                            serverIp: serverIp, // 服务器IP
-                            gpuType: gpu.gpu_type, // GPU型号
-                            totalMemory: gpu.total, // 总内存(MB)
-                            usedMemory: gpu.usage, // 已用内存(MB)
-                            usagePercent: usagePercent // 内存使用率(%)
-                        });
+                    // 将所有GPU信息合并到一个条目中
+                    const gpuInfo = gpuList.map(gpu => {
+                        const usagePercent = ((gpu.usage / gpu.total) * 100).toFixed(1);
+                        return {
+                            gpuType: gpu.gpu_type,
+                            totalMemory: gpu.total,
+                            usedMemory: gpu.usage,
+                            usagePercent: usagePercent
+                        };
+                    });
+                    
+                    formattedData.push({
+                        serverIp: serverIp,
+                        gpus: gpuInfo
                     });
                 });
+                
                 return formattedData;
             }
 
@@ -94,24 +135,32 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                ${formattedData.map(gpu => {
-                                    // 根据使用率添加不同颜色类
-                                    let usageClass = "usage-low";
-                                    if (gpu.usagePercent >= 80) {
-                                        usageClass = "usage-high";
-                                    } else if (gpu.usagePercent >= 50) {
-                                        usageClass = "usage-middle";
-                                    }
-
-                                    return `
-                                        <tr>
-                                            <td>${gpu.serverIp}</td>
-                                            <td>${gpu.gpuType}</td>
-                                            <td>${gpu.usedMemory}</td>
-                                            <td>${gpu.totalMemory}</td>
-                                            <td class="${usageClass}">${gpu.usagePercent}%</td>
-                                        </tr>
-                                    `;
+                                ${formattedData.map(server => {
+                                    // 创建每个GPU的行
+                                    const gpuRows = server.gpus.map((gpu, index) => {
+                                        let usageClass = "usage-low";
+                                        if (gpu.usagePercent >= 80) {
+                                            usageClass = "usage-high";
+                                        } else if (gpu.usagePercent >= 50) {
+                                            usageClass = "usage-middle";
+                                        }
+                                        
+                                        // 只在第一行显示服务器IP，并使用rowspan跨越所有GPU行
+                                        const serverIpCell = index === 0 ? 
+                                            `<td rowspan="${server.gpus.length}">${server.serverIp}</td>` : '';
+                                        
+                                        return `
+                                            <tr>
+                                                ${serverIpCell}
+                                                <td>${gpu.gpuType}</td>
+                                                <td>${gpu.usedMemory}</td>
+                                                <td>${gpu.totalMemory}</td>
+                                                <td class="${usageClass}">${gpu.usagePercent}%</td>
+                                            </tr>
+                                        `;
+                                    }).join("");
+                                    
+                                    return gpuRows;
                                 }).join("")}
                             </tbody>
                         </table>

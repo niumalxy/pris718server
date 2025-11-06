@@ -23,12 +23,14 @@ export function activate(context: vscode.ExtensionContext) {
 export function deactivate() {}
 
 const DFT_URL = "";
-const SCHOOL_URL = "";
-
+const SCHOOL_LIST_GPU_USAGE_URL = "http://10.160.4.55:5000/api/list_gpu_usage/school";
+const GET_HOST_LIST_URL = "http://10.160.4.55:5000/api/host_list/dft"
+const DFT_LIST_GPU_USAGE_URL = "http://10.10.90.246:5000/api/gpu_usage_by_list"
 
 async function getGpuList(): Promise<Object> {
-    const apiUrl = "http://127.0.0.1:5000/api/list_gpu_usage";
-
+    // 获取school的数据
+    const apiUrl = SCHOOL_LIST_GPU_USAGE_URL;
+    var school_json = [];
 	try {
         // 发起GET请求
         const response = await fetch(apiUrl);
@@ -37,15 +39,53 @@ async function getGpuList(): Promise<Object> {
         if (!response.ok) {
             throw new Error(`请求失败，状态码: ${response.status}`);
         }
-        
         // 解析响应数据（根据后端返回格式调整，这里以JSON为例）
         const data = await response.json();
         // 处理数据并返回（根据实际需求调整）
-        return JSON.parse(JSON.stringify(data));
+        school_json = JSON.parse(JSON.stringify(data))
     } catch (error) {
-        // 捕获错误（如网络问题、解析失败等）
-        return `请求出错: ${error instanceof Error ? error.message : String(error)}`;
+        console.error("校园网服务器访问失败！");
     }
+
+    //获取dft的数据
+    var dft_json = []
+    const controller = new AbortController()
+    try {
+        // 发起GET请求
+        var response = await fetchWithTimeout(GET_HOST_LIST_URL, {
+            method: "GET"
+        });
+        // 检查请求是否成功（状态码200-299）
+        if (response instanceof Response && !response.ok) {
+            throw new Error(`请求失败，状态码: ${response.status}`);
+        }
+        if (!(response instanceof Response)) {
+            throw new Error('Unexpected response type');
+        }
+        // 解析响应数据（根据后端返回格式调整，这里以JSON为例）
+        var data = await response.json();
+        // 处理数据并返回（根据实际需求调整）
+        var host_list = data
+        response = await fetchWithTimeout(DFT_LIST_GPU_USAGE_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(host_list)
+        })
+        setTimeout(() => {
+            console.log(controller)
+            controller.abort()
+          }, 10000)
+        if (!(response instanceof Response)) {
+            throw new Error('Unexpected response type');
+        }
+        data = await response.json();
+        dft_json = JSON.parse(JSON.stringify(data))
+    } catch (error) {
+        console.error("东方通服务器访问失败！");
+    }
+    return [...school_json, ...dft_json]
 }
 
 function registerCommand(context: vscode.ExtensionContext) {
@@ -81,6 +121,18 @@ function registerCommand(context: vscode.ExtensionContext) {
 			context.subscriptions
 		);
 	});
+}
+
+function fetchWithTimeout(url: string, options: any, timeout = 10000) {
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('Request timeout'));
+      }, timeout);
+    });
+    return Promise.race([
+      fetch(url, options),
+      timeoutPromise
+    ]);
 }
 
 // 侧边栏 Webview 提供者类
@@ -131,3 +183,4 @@ class SidebarWebviewProvider implements vscode.WebviewViewProvider {
         );
     }
 }
+

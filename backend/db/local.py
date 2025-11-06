@@ -10,5 +10,4 @@ def getMachineList():
     ]
 
 def getHostList(lab):
-    machineList = getMachineList()
-    return [x for x in machineList if x["lab"] == lab]
+    return [x for x in getMachineList() if x["lab"] == lab]
