@@ -5,15 +5,10 @@ import pymysql
 
 class mysql:
     def __init__(self):
-        config = self._read_mysql_config()
-        try:
-            self.conn = pymysql.connect(**config)
-        except OperationalError as e:
-            # 连接错误（如地址、端口、密码错误）
-            logger.error("数据库连接失败！")
-            self.conn = None
-        
+        self.config = self._read_mysql_config()
+        self.conn = None
     def queryHostListByLab(self, lab: str):
+        self.conn = pymysql.connect(**self.config)
         sql = "SELECT * FROM server_info WHERE lab = %s"
         params = (lab, )
         cursor = self.conn.cursor(cursor=pymysql.cursors.DictCursor)
@@ -49,3 +44,6 @@ class mysql:
     
 
 mysql = mysql()
+
+if __name__ == "__main__":
+    print(mysql.queryHostListByLab("school"))
