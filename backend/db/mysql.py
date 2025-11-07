@@ -15,6 +15,7 @@ class mysql:
         logger.info("execute sql: "+cursor.mogrify(sql, params))
         cursor.execute(sql, params)
         results = cursor.fetchall()
+        self.conn.close()
         return results
     def _read_mysql_config(self, config_path="conf/mysql.conf"):
         """
