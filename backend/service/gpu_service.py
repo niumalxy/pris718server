@@ -4,7 +4,10 @@ import re
 from logger.logger import logger
 from model import command
 from db.mysql import mysql
+from concurrent.futures import ThreadPoolExecutor
+import json
 
+threadPool = ThreadPoolExecutor(max_workers=3)
 # 全局变量，用于防止连接过多导致服务器崩溃
 statusCache = expirableDict()
 
@@ -32,6 +35,17 @@ LAB2LABNAME = {
     'dft': "东方通",
     'school': "校园网"
 }
+
+def fetch_data(machine):
+    conn = ssh(machine["host"], machine["username"], machine["port"], machine["password"])
+    cmdResult = conn.run_command(command=command.GPU_INFO_COMMAND)
+    conn.close()
+    gpu_infos = parseGpuUsageInfo(cmdResult)
+    #带上机房名称
+    host_name = LAB2LABNAME[machine['lab']] + ":" + machine["host"]
+    # 缓存，10s过期
+    statusCache.set(host_name, gpu_infos, expire=10)
+    return {host_name: gpu_infos}
 def getGpuUsageList(machineList: list):
     status = []
     for machine in machineList:
@@ -41,18 +55,14 @@ def getGpuUsageList(machineList: list):
             status.append({machine["host"]: cache})
             continue
         try:
-            conn = ssh(host=machine["host"], username=machine["username"], password=machine["password"], port=machine["port"])
-            cmdResult = conn.run_command(command=command.GPU_INFO_COMMAND)
-            conn.close()
-            gpu_infos = parseGpuUsageInfo(cmdResult)
-            #带上机房名称
-            host_name = LAB2LABNAME[machine['lab']] + ":" + machine["host"]
-            status.append({host_name: gpu_infos})
-            # 缓存，10s过期
-            statusCache.set(host_name, gpu_infos, expire=10)
+            with ThreadPoolExecutor(max_workers=3) as executor:
+                future = executor.submit(fetch_data, machine)
+                result = future.result(timeout=5)
+                if result:
+                    status.append(result)
         except Exception as e:
-            logger.error(f"Machine {machine} goes wrong, msg: ", e)
-            continue
+           logger.error(f"Machine {machine} goes wrong, msg: ", e)
+           continue
     # 按空闲量排序
     def get_total(x):
         x = x[list(x.keys())[0]]
