@@ -33,7 +33,7 @@ get_lab_backend_url("dft").then(backend_url => {
     DFT_CHECK_URL = DFT_BACKEND_URL + "/check";
     DFT_LIST_GPU_USAGE_URL = DFT_BACKEND_URL + "/api/gpu_usage_by_list"
 }).catch(error => {
-    console.log(error);
+    console.error(error);
     //弹出提示框
     vscode.window.showErrorMessage("获取后端服务失败，请确认连接校园网！");
 });
@@ -108,11 +108,7 @@ async function getGpuList(): Promise<Object> {
               'Content-Type': 'application/json'
             },
             body: JSON.stringify(host_list)
-        })
-        setTimeout(() => {
-            console.log(controller)
-            controller.abort()
-          }, 10000)
+        }, 20000)
         if (!(response instanceof Response)) {
             throw new Error('Unexpected response type');
         }

@@ -8,7 +8,6 @@ from concurrent.futures import ThreadPoolExecutor
 import json
 import concurrent.futures as futures
 
-threadPool = ThreadPoolExecutor(max_workers=3)
 # 全局变量，用于防止连接过多导致服务器崩溃
 statusCache = expirableDict()
 
@@ -65,11 +64,14 @@ def getGpuUsageList(machineList: list):
             future_tasks.append(executor.submit(fetch_data, machine))
     # 获取结果
     for future in futures.as_completed(future_tasks):
-        result = future.result(timeout=5)
-        if result:
-            status.append(result)
-            logger.info(f"Get data from {result}")
-
+        try:
+            result = future.result(timeout=5)
+            if result:
+                status.append(result)
+                logger.info(f"Get data from {result}")
+        except Exception as e:
+            logger.error(f"Get data from {machine} goes wrong, msg: ", e)
+            continue
     # 按空闲量排序
     def get_total(x):
         x = x[list(x.keys())[0]]
