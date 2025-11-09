@@ -108,7 +108,7 @@ async function getGpuList(): Promise<Object> {
               'Content-Type': 'application/json'
             },
             body: JSON.stringify(host_list)
-        }, 20000)
+        }, 10000)
         if (!(response instanceof Response)) {
             throw new Error('Unexpected response type');
         }

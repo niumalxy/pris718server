@@ -1,17 +1,17 @@
 from utils.expirableDict import expirableDict
 from utils.ssh import ssh
+from utils import timeoutWorker
 import re
 from logger.logger import logger
 from model import command
 from db.mysql import mysql
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 import json
 import concurrent.futures as futures
+import time
 
 # 全局变量，用于防止连接过多导致服务器崩溃
 statusCache = expirableDict()
-
-# TODO: 提升响应速度，线程池多任务访问服务器
 
 def getHostList(lab: str):
     return mysql.queryHostListByLab(lab)
@@ -54,24 +54,23 @@ def fetch_data(machine):
 def getGpuUsageList(machineList: list):
     status = []
     future_tasks = []
-    for machine in machineList:
-        cache = statusCache.get(machine["host"])
-        if cache:
-            logger.info(f"Hit cache: {machine['host']}")
-            status.append({machine["host"]: cache})
-            continue
-        with ThreadPoolExecutor(max_workers=3) as executor:
-            future_tasks.append(executor.submit(fetch_data, machine))
-    # 获取结果
-    for future in futures.as_completed(future_tasks):
-        try:
-            result = future.result(timeout=5)
-            if result:
-                status.append(result)
-                logger.info(f"Get data from {result}")
-        except Exception as e:
-            logger.error(f"Get data from {machine} goes wrong, msg: ", e)
-            continue
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        for machine in machineList:
+            cache = statusCache.get(machine["host"])
+            if cache:
+                logger.info(f"Hit cache: {machine['host']}")
+                status.append({machine["host"]: cache})
+                continue
+            future_tasks.append(executor.submit(timeoutWorker.timeout_return_none, fetch_data, 5, machine))
+                
+        # 处理已完成的任务
+        for future in futures.as_completed(future_tasks):
+            try:
+                result = future.result()
+                if result:
+                    status.append(result)
+            except Exception as e:
+                logger.error(f"machine: {machine} ssh失败：", e)
     # 按空闲量排序
     def get_total(x):
         x = x[list(x.keys())[0]]
@@ -83,5 +82,6 @@ def getGpuUsageList(machineList: list):
     return status
 
 if __name__ == "__main__":
+    
     machineList = machineFactory.getMachineList()
     print(getGpuUsageList)
