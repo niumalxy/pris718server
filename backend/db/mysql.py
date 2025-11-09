@@ -17,6 +17,18 @@ class mysql:
         results = cursor.fetchall()
         self.conn.close()
         return results
+    
+    def queryLabBackend(self, lab: str):
+        self.conn = pymysql.connect(**self.config)
+        sql = "SELECT * FROM backend_url WHERE lab = %s"
+        params = (lab, )
+        cursor = self.conn.cursor(cursor=pymysql.cursors.DictCursor)
+        logger.info("execute sql: "+cursor.mogrify(sql, params))
+        cursor.execute(sql, params)
+        results = cursor.fetchone()
+        self.conn.close()
+        return results
+        
     def _read_mysql_config(self, config_path="conf/mysql.conf"):
         """
         读取 MySQL 配置文件

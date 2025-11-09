@@ -2,7 +2,7 @@ import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from flask import Flask, jsonify, request
 from model.request_model import *
-from service import gpu_service
+from service import gpu_service, lab_service
 from db.mysql import mysql
 
 app = Flask(__name__)
@@ -41,9 +41,9 @@ def getGpuUsageListByHostList():
     machineList = request.json
     return jsonify(gpu_service.getGpuUsageList(machineList))
 
-@app.route('/api/best_device', methods=["POST"])
-def getBestDevice():
-    pass
+@app.route('/api/get_lab_backend/<lab>', methods=["GET"])
+def getLabBackend(lab: str):
+    return lab_service.getLabBackend(lab)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

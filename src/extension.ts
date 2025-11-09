@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { webcrypto } from 'crypto';
 
+
 export function activate(context: vscode.ExtensionContext) {
 	// 注册侧边栏 Webview
     const provider = new SidebarWebviewProvider(context.extensionUri);
@@ -13,7 +14,6 @@ export function activate(context: vscode.ExtensionContext) {
 				{ webviewOptions: { retainContextWhenHidden: false } }
         )
     );
-
 	//注册command
 	const disposable = registerCommand(context);
 	context.subscriptions.push(disposable);
@@ -22,12 +22,26 @@ export function activate(context: vscode.ExtensionContext) {
 // This method is called when your extension is deactivated
 export function deactivate() {}
 
-const DFT_CHECK_URL = "http://10.10.90.248:5000/check";
 const SCHOOL_LIST_GPU_USAGE_URL = "http://10.160.4.55:5000/api/list_gpu_usage/school";
 const GET_HOST_LIST_URL = "http://10.160.4.55:5000/api/host_list/dft"
-const DFT_LIST_GPU_USAGE_URL = "http://10.10.90.248:5000/api/gpu_usage_by_list"
+
+async function get_lab_backend_url(lab: string): Promise<string> {
+    const GET_BACKEND_URL = "http://10.160.4.55:5000/api/get_lab_backend/"
+    const response = await fetch(GET_BACKEND_URL + lab);
+    if(!response.ok) {
+        throw new Error(`请求失败，状态码: ${response.status}`);
+    }
+    const data = await response.text();
+    return data.trim(); 
+}
 
 async function getGpuList(): Promise<Object> {
+    //先获取lab的backend url
+    var DFT_BACKEND_URL = await get_lab_backend_url("dft"); 
+    DFT_BACKEND_URL = DFT_BACKEND_URL.trim();
+    const DFT_CHECK_URL = DFT_BACKEND_URL + "/check";
+    const DFT_LIST_GPU_USAGE_URL = DFT_BACKEND_URL + "/api/gpu_usage_by_list"
+
     // 获取school的数据
     const apiUrl = SCHOOL_LIST_GPU_USAGE_URL;
     var school_json = [];
