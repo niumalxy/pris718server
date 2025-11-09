@@ -6,6 +6,7 @@ from model import command
 from db.mysql import mysql
 from concurrent.futures import ThreadPoolExecutor
 import json
+import concurrent.futures as futures
 
 threadPool = ThreadPoolExecutor(max_workers=3)
 # 全局变量，用于防止连接过多导致服务器崩溃
@@ -37,32 +38,38 @@ LAB2LABNAME = {
 }
 
 def fetch_data(machine):
-    conn = ssh(machine["host"], machine["username"], machine["port"], machine["password"])
-    cmdResult = conn.run_command(command=command.GPU_INFO_COMMAND)
-    conn.close()
-    gpu_infos = parseGpuUsageInfo(cmdResult)
-    #带上机房名称
-    host_name = LAB2LABNAME[machine['lab']] + ":" + machine["host"]
-    # 缓存，10s过期
-    statusCache.set(host_name, gpu_infos, expire=10)
-    return {host_name: gpu_infos}
+    try:
+        conn = ssh(machine["host"], machine["username"], machine["port"], machine["password"])
+        cmdResult = conn.run_command(command=command.GPU_INFO_COMMAND)
+        conn.close()
+        gpu_infos = parseGpuUsageInfo(cmdResult)
+        #带上机房名称
+        host_name = LAB2LABNAME[machine['lab']] + ":" + machine["host"]
+        # 缓存，10s过期
+        statusCache.set(host_name, gpu_infos, expire=10)
+        return {host_name: gpu_infos}
+    except Exception as e:
+        logger.error(f"Machine {machine} goes wrong, msg: ", e)
+        return None
+    
 def getGpuUsageList(machineList: list):
     status = []
+    future_tasks = []
     for machine in machineList:
         cache = statusCache.get(machine["host"])
         if cache:
             logger.info(f"Hit cache: {machine['host']}")
             status.append({machine["host"]: cache})
             continue
-        try:
-            with ThreadPoolExecutor(max_workers=3) as executor:
-                future = executor.submit(fetch_data, machine)
-                result = future.result(timeout=5)
-                if result:
-                    status.append(result)
-        except Exception as e:
-           logger.error(f"Machine {machine} goes wrong, msg: ", e)
-           continue
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            future_tasks.append(executor.submit(fetch_data, machine))
+    # 获取结果
+    for future in futures.as_completed(future_tasks):
+        result = future.result(timeout=5)
+        if result:
+            status.append(result)
+            logger.info(f"Get data from {result}")
+
     # 按空闲量排序
     def get_total(x):
         x = x[list(x.keys())[0]]

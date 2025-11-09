@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { webcrypto } from 'crypto';
-
+import { get } from 'http';
 
 export function activate(context: vscode.ExtensionContext) {
 	// 注册侧边栏 Webview
@@ -24,6 +24,19 @@ export function deactivate() {}
 
 const SCHOOL_LIST_GPU_USAGE_URL = "http://10.160.4.55:5000/api/list_gpu_usage/school";
 const GET_HOST_LIST_URL = "http://10.160.4.55:5000/api/host_list/dft"
+var DFT_BACKEND_URL = ""; 
+var DFT_CHECK_URL = "";
+var DFT_LIST_GPU_USAGE_URL = "";
+// 获取后端服务地址
+get_lab_backend_url("dft").then(backend_url => {
+    DFT_BACKEND_URL = backend_url.trim();
+    DFT_CHECK_URL = DFT_BACKEND_URL + "/check";
+    DFT_LIST_GPU_USAGE_URL = DFT_BACKEND_URL + "/api/gpu_usage_by_list"
+}).catch(error => {
+    console.log(error);
+    //弹出提示框
+    vscode.window.showErrorMessage("获取后端服务失败，请确认连接校园网！");
+});
 
 async function get_lab_backend_url(lab: string): Promise<string> {
     const GET_BACKEND_URL = "http://10.160.4.55:5000/api/get_lab_backend/"
@@ -32,16 +45,11 @@ async function get_lab_backend_url(lab: string): Promise<string> {
         throw new Error(`请求失败，状态码: ${response.status}`);
     }
     const data = await response.text();
-    return data.trim(); 
+    return data; 
 }
 
 async function getGpuList(): Promise<Object> {
-    //先获取lab的backend url
-    var DFT_BACKEND_URL = await get_lab_backend_url("dft"); 
-    DFT_BACKEND_URL = DFT_BACKEND_URL.trim();
-    const DFT_CHECK_URL = DFT_BACKEND_URL + "/check";
-    const DFT_LIST_GPU_USAGE_URL = DFT_BACKEND_URL + "/api/gpu_usage_by_list"
-
+    console.log("DFT backend url: " + DFT_BACKEND_URL)
     // 获取school的数据
     const apiUrl = SCHOOL_LIST_GPU_USAGE_URL;
     var school_json = [];
@@ -67,11 +75,11 @@ async function getGpuList(): Promise<Object> {
         method: "GET"
         }, 2000);
         if (response instanceof Response && !response.ok) {
-            console.error("东方通服务器访问失败！");
+            console.error("东方通[check]访问失败！");
             return school_json;
         }
     } catch (error) {
-        console.error("东方通服务器访问失败！");
+        console.error("东方通[check]访问失败！");
         return school_json;
     }
     
@@ -111,7 +119,7 @@ async function getGpuList(): Promise<Object> {
         data = await response.json();
         dft_json = JSON.parse(JSON.stringify(data))
     } catch (error) {
-        console.error("东方通服务器访问失败！");
+        console.error("东方通服务器访问失败，信息:" + error);
     }
     return [...school_json, ...dft_json]
 }
