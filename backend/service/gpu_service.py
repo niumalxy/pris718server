@@ -61,7 +61,7 @@ def getGpuUsageList(machineList: list):
                 logger.info(f"Hit cache: {machine['host']}")
                 status.append({machine["host"]: cache})
                 continue
-            future_tasks.append(executor.submit(timeoutWorker.timeout_return_none, fetch_data, 5, machine))
+            future_tasks.append(executor.submit(timeoutWorker.timeout_return_none, fetch_data, 30, machine))
                 
         # 处理已完成的任务
         for future in futures.as_completed(future_tasks):
