@@ -1,178 +1,354 @@
 <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Backend Demo</title>
-    </head>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPU Monitor</title>
     <style>
-        table {
-            border-collapse: collapse;
-            width: 100%;
-        }
-        
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        
-        th {
-            background-color: transparent;
-            font-weight: bold;
-        }
-        
-        tr {
-            background-color: transparent;
-            color: white;
+        :root {
+            --gap: 16px;
+            --radius: 6px;
         }
 
-        tr:hover {
-            background-color: #f5f5f5;
+        body {
+            font-family: var(--vscode-font-family, "San Francisco", "Segoe UI", "Helvetica Neue", sans-serif);
+            font-size: var(--vscode-font-size, 13px);
+            color: var(--vscode-foreground);
+            background-color: var(--vscode-editor-background);
+            padding: 20px;
+            margin: 0;
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 1.5em;
+            font-weight: 500;
+            margin-bottom: 20px;
+            margin-top: 0;
+            color: var(--vscode-editor.foreground);
+        }
+
+        /* Button */
+        button {
+            background-color: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-family: inherit;
+            transition: background-color 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        button:hover {
+            background-color: var(--vscode-button-hoverBackground);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            background-color: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+        }
+
+        /* Status & Layout */
+        .controls {
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-msg {
+            font-size: 13px;
+            color: var(--vscode-descriptionForeground);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Server Cards */
+        .server-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .server-card {
+            background-color: var(--vscode-editorWidget-background);
+            border: 1px solid var(--vscode-widget-border);
+            border-radius: var(--radius);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .server-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .server-header {
+            background-color: var(--vscode-sideBarSectionHeader-background);
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--vscode-widget-border);
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .server-ip {
+            color: var(--vscode-sideBarTitle-foreground);
+            font-family: var(--vscode-editor-font-family, monospace);
+        }
+
+        /* GPU List */
+        .gpu-list {
+            padding: 12px 16px;
+        }
+
+        .gpu-item {
+            display: flex;
+            flex-direction: column;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--vscode-settings-dropdownBorder);
+        }
+
+        .gpu-item:last-child {
+            border-bottom: none;
+        }
+
+        .gpu-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .gpu-name {
+            font-weight: 600;
+            color: var(--vscode-editor-foreground);
+        }
+
+        .gpu-meta {
+            font-size: 12px;
+            color: var(--vscode-descriptionForeground);
+        }
+
+        /* Progress Bar */
+        .progress-track {
+            height: 6px;
+            background-color: var(--vscode-scrollbarSlider-background);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        /* Usage Colors */
+        .usage-low .progress-fill { background-color: #4caf50; } /* Green */
+        .usage-medium .progress-fill { background-color: #ff9800; } /* Orange */
+        .usage-high .progress-fill { background-color: #f44336; } /* Red */
+
+        .usage-text {
+            font-size: 12px;
+            margin-left: 8px;
+            font-weight: 500;
         }
         
-        .usage-low {
-            color: green;
+        .usage-low .usage-text { color: #4caf50; }
+        .usage-medium .usage-text { color: #ff9800; }
+        .usage-high .usage-text { color: #f44336; }
+
+        /* Spinner */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .spinner {
+            border: 2px solid var(--vscode-descriptionForeground);
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            width: 14px;
+            height: 14px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--vscode-descriptionForeground);
+            border: 1px dashed var(--vscode-widget-border);
+            border-radius: var(--radius);
+            background-color: var(--vscode-editorWidget-background);
         }
         
-        .usage-middle {
-            color: orange;
-        }
-        
-        .usage-high {
-            color: red;
-            font-weight: bold;
+        .error-state {
+             color: var(--vscode-errorForeground);
+             border-color: var(--vscode-errorForeground);
         }
     </style>
-    <body>
-        <h1>PRIS-718服务器</h1>
-        <button id="callBackendBtn">查询</button>
-        <div id="result" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc;">
-            <div class="no-data">点击查询按钮获取服务器数据</div>
+</head>
+<body>
+    <h1>GPU 资源监控</h1>
+    
+    <div class="controls">
+        <button id="callBackendBtn">
+            <span>刷新数据</span>
+        </button>
+        <div id="status" class="status-msg"></div>
+    </div>
+
+    <div id="container">
+        <div class="empty-state">
+            暂无数据，请点击刷新按钮
         </div>
-        <!-- 表格容器 -->
-        <div id="table-container" style="display: none;"></div>
+    </div>
 
-        <script>
-            // 与插件通信的API
-            const vscode = acquireVsCodeApi();
-            // 获取DOM元素
-            const btn = document.getElementById('callBackendBtn');
-            const resultDiv = document.getElementById('result');
-            // 按钮点击事件
-            btn?.addEventListener('click', () => {
-                // 状态更新：加载中
-                btn.disabled = true;
-                resultDiv.innerHTML = '<div class="loading">正在查询服务器数据...</div>';
-                // 发送消息给插件（后端）
-                vscode.postMessage({
-                    command: 'getGpuList'
-                });
-            });
-            // 接收来自插件的消息
-            window.addEventListener('message', event => {
-                const message = event.data;
-                renderGpuTable(message);
-                btn.disabled = false;
-            });
+    <script>
+        const vscode = acquireVsCodeApi();
+        const btn = document.getElementById('callBackendBtn');
+        const statusDiv = document.getElementById('status');
+        const container = document.getElementById('container');
 
-            // 处理原始数据：扁平化结构（关联服务器IP和GPU信息）
-            function formatGpuData(rawData) {
-                const formattedData = [];
-                
-                rawData.forEach(serverObj => {
-                    const serverIp = Object.keys(serverObj)[0];
-                    const gpuList = serverObj[serverIp];
-                    
-                    // 将所有GPU信息合并到一个条目中
-                    const gpuInfo = gpuList.map(gpu => {
-                        const usagePercent = ((gpu.usage / gpu.total) * 100).toFixed(1);
-                        return {
-                            gpuType: gpu.gpu_type,
-                            totalMemory: gpu.total,
-                            usedMemory: gpu.usage,
-                            usagePercent: usagePercent
-                        };
-                    });
-                    
-                    formattedData.push({
-                        serverIp: serverIp,
-                        gpus: gpuInfo
-                    });
-                });
-                
-                return formattedData;
+        // State classes
+        const USAGE_LOW = 'usage-low';
+        const USAGE_MEDIUM = 'usage-medium';
+        const USAGE_HIGH = 'usage-high';
+
+        btn.addEventListener('click', () => {
+            setLoading(true);
+            vscode.postMessage({ command: 'getGpuList' });
+        });
+
+        window.addEventListener('message', event => {
+            renderView(event.data);
+            setLoading(false);
+        });
+
+        function setLoading(isLoading) {
+            btn.disabled = isLoading;
+            if (isLoading) {
+                btn.innerHTML = '<span class="spinner"></span>&nbsp;&nbsp;查询中...';
+                statusDiv.textContent = '';
+            } else {
+                btn.innerHTML = '刷新数据';
             }
+        }
 
-            // 渲染表格
-            function renderGpuTable(result) {
-                const statusEl = document.getElementById("result");
-                const tableContainer = document.getElementById("table-container");
+        function formatGpuData(rawData) {
+            const formattedData = [];
+            if (!Array.isArray(rawData)) return [];
+            
+            rawData.forEach(serverObj => {
+                const serverIp = Object.keys(serverObj)[0];
+                const gpuList = serverObj[serverIp];
+                
+                // Skip if format is unexpected
+                if (!gpuList) return;
 
-                try {
-                    // 处理原始数据
-                    const formattedData = formatGpuData(result);
-                    if (formattedData.length === 0) {
-                        statusEl.textContent = "暂无GPU资源数据";
-                        statusEl.className = "status";
-                        return;
-                    }
+                const gpuInfo = gpuList.map(gpu => {
+                    const usagePercent = ((gpu.usage / gpu.total) * 100).toFixed(1);
+                    return {
+                        name: gpu.gpu_type || 'Unknown GPU',
+                        total: gpu.total,
+                        used: gpu.usage,
+                        percent: Number(usagePercent)
+                    };
+                });
+                
+                formattedData.push({
+                    ip: serverIp,
+                    gpus: gpuInfo
+                });
+            });
+            // Optional: Sort by IP
+            return formattedData.sort((a, b) => a.ip.localeCompare(b.ip));
+        }
 
-                    // 隐藏状态提示，显示表格
-                    statusEl.style.display = "none";
-                    tableContainer.style.display = "block";
+        function getUsageClass(percent) {
+            if (percent >= 80) return USAGE_HIGH;
+            if (percent >= 50) return USAGE_MEDIUM;
+            return USAGE_LOW;
+        }
 
-                    // 生成表格HTML
-                    const tableHtml = `
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>服务器IP</th>
-                                    <th>GPU型号</th>
-                                    <th>已用内存(MB)</th>
-                                    <th>总内存(MB)</th>
-                                    <th>内存使用率(%)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${formattedData.map(server => {
-                                    // 创建每个GPU的行
-                                    const gpuRows = server.gpus.map((gpu, index) => {
-                                        let usageClass = "usage-low";
-                                        if (gpu.usagePercent >= 80) {
-                                            usageClass = "usage-high";
-                                        } else if (gpu.usagePercent >= 50) {
-                                            usageClass = "usage-middle";
-                                        }
-                                        
-                                        // 只在第一行显示服务器IP，并使用rowspan跨越所有GPU行
-                                        const serverIpCell = index === 0 ? 
-                                            `<td rowspan="${server.gpus.length}">${server.serverIp}</td>` : '';
-                                        
-                                        return `
-                                            <tr>
-                                                ${serverIpCell}
-                                                <td>${gpu.gpuType}</td>
-                                                <td>${gpu.usedMemory}</td>
-                                                <td>${gpu.totalMemory}</td>
-                                                <td class="${usageClass}">${gpu.usagePercent}%</td>
-                                            </tr>
-                                        `;
-                                    }).join("");
-                                    
-                                    return gpuRows;
-                                }).join("")}
-                            </tbody>
-                        </table>
+        function renderView(data) {
+            try {
+                if (!data || (Array.isArray(data) && data.length === 0)) {
+                    renderEmpty("未找到有效的服务器数据");
+                    return;
+                }
+
+                const servers = formatGpuData(data);
+                
+                if (servers.length === 0) {
+                    renderEmpty("解析数据为空");
+                    return;
+                }
+
+                let html = '<div class="server-grid">';
+                
+                servers.forEach(server => {
+                    html += `
+                        <div class="server-card">
+                            <div class="server-header">
+                                <span class="server-ip">${server.ip}</span>
+                                <span class="gpu-count">${server.gpus.length} GPUs</span>
+                            </div>
+                            <div class="gpu-list">
                     `;
 
-                    tableContainer.innerHTML = tableHtml;
+                    server.gpus.forEach(gpu => {
+                        const usageClass = getUsageClass(gpu.percent);
+                        html += `
+                            <div class="gpu-item ${usageClass}">
+                                <div class="gpu-header">
+                                    <span class="gpu-name">${gpu.name}</span>
+                                    <span class="gpu-meta">${gpu.used} / ${gpu.total} MB</span>
+                                </div>
+                                <div style="display: flex; align-items: center;">
+                                    <div class="progress-track" style="flex-grow: 1;">
+                                        <div class="progress-fill" style="width: ${gpu.percent}%;"></div>
+                                    </div>
+                                    <span class="usage-text">${gpu.percent}%</span>
+                                </div>
+                            </div>
+                        `;
+                    });
 
-                } catch (err) {
-                    statusEl.textContent = `表格渲染失败：${err.message}`;
-                    statusEl.className = "status error";
-                }
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += '</div>';
+                container.innerHTML = html;
+                statusDiv.innerText = `更新时间: ${new Date().toLocaleTimeString()}`;
+
+            } catch (err) {
+                renderError(err.message);
             }
-        </script>
-    </body>
-    </html>
+        }
+
+        function renderEmpty(msg) {
+            container.innerHTML = `<div class="empty-state">${msg}</div>`;
+        }
+
+        function renderError(msg) {
+             container.innerHTML = `<div class="empty-state error-state">渲染错误: ${msg}</div>`;
+        }
+    </script>
+</body>
+</html>

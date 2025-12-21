@@ -4,7 +4,7 @@
   "description": "pris GPU search server",
   "author": "lxy",
   "publisher": "pris718server",
-  "version": "0.0.2",
+  "version": "0.1.1",
   "engines": {
     "vscode": "^1.85.0"
   },
